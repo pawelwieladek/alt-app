@@ -2190,15 +2190,11 @@ module.exports = focusNode;
  * Same as document.activeElement but wraps in a try-catch block. In IE it is
  * not safe to call document.activeElement if there is nothing focused.
  *
- * The activeElement will be null only if the document or document body is not yet defined.
+ * The activeElement will be null only if the document body is not yet defined.
  */
-'use strict';
+"use strict";
 
 function getActiveElement() /*?DOMElement*/{
-  if (typeof document === 'undefined') {
-    return null;
-  }
-
   try {
     return document.activeElement || document.body;
   } catch (e) {
@@ -2444,7 +2440,7 @@ module.exports = hyphenateStyleName;
  * will remain to ensure logic does not differ in production.
  */
 
-var invariant = function (condition, format, a, b, c, d, e, f) {
+function invariant(condition, format, a, b, c, d, e, f) {
   if (process.env.NODE_ENV !== 'production') {
     if (format === undefined) {
       throw new Error('invariant requires an error message argument');
@@ -2458,15 +2454,16 @@ var invariant = function (condition, format, a, b, c, d, e, f) {
     } else {
       var args = [a, b, c, d, e, f];
       var argIndex = 0;
-      error = new Error('Invariant Violation: ' + format.replace(/%s/g, function () {
+      error = new Error(format.replace(/%s/g, function () {
         return args[argIndex++];
       }));
+      error.name = 'Invariant Violation';
     }
 
     error.framesToPop = 1; // we don't care about invariant's own frame
     throw error;
   }
-};
+}
 
 module.exports = invariant;
 }).call(this,require('_process'))
@@ -2731,18 +2728,23 @@ module.exports = performance || {};
 'use strict';
 
 var performance = require('./performance');
-var curPerformance = performance;
+
+var performanceNow;
 
 /**
  * Detect if we can use `window.performance.now()` and gracefully fallback to
  * `Date.now()` if it doesn't exist. We need to support Firefox < 15 for now
  * because of Facebook's testing infrastructure.
  */
-if (!curPerformance || !curPerformance.now) {
-  curPerformance = Date;
+if (performance.now) {
+  performanceNow = function () {
+    return performance.now();
+  };
+} else {
+  performanceNow = function () {
+    return Date.now();
+  };
 }
-
-var performanceNow = curPerformance.now.bind(curPerformance);
 
 module.exports = performanceNow;
 },{"./performance":36}],38:[function(require,module,exports){
@@ -7007,8 +7009,8 @@ var HTMLDOMPropertyConfig = {
      */
     // autoCapitalize and autoCorrect are supported in Mobile Safari for
     // keyboard hints.
-    autoCapitalize: null,
-    autoCorrect: null,
+    autoCapitalize: MUST_USE_ATTRIBUTE,
+    autoCorrect: MUST_USE_ATTRIBUTE,
     // autoSave allows WebKit/Blink to persist values of input fields on page reloads
     autoSave: null,
     // color is for Safari mask-icon link
@@ -7039,9 +7041,7 @@ var HTMLDOMPropertyConfig = {
     httpEquiv: 'http-equiv'
   },
   DOMPropertyNames: {
-    autoCapitalize: 'autocapitalize',
     autoComplete: 'autocomplete',
-    autoCorrect: 'autocorrect',
     autoFocus: 'autofocus',
     autoPlay: 'autoplay',
     autoSave: 'autosave',
@@ -11484,7 +11484,7 @@ function updateOptionsIfPendingUpdateAndMounted() {
     var value = LinkedValueUtils.getValue(props);
 
     if (value != null) {
-      updateOptions(this, props, value);
+      updateOptions(this, Boolean(props.multiple), value);
     }
   }
 }
@@ -12563,7 +12563,9 @@ var DOM_OPERATION_TYPES = {
   'setValueForProperty': 'update attribute',
   'setValueForAttribute': 'update attribute',
   'deleteValueForProperty': 'remove attribute',
-  'dangerouslyReplaceNodeWithMarkupByID': 'replace'
+  'setValueForStyles': 'update styles',
+  'replaceNodeWithMarkup': 'replace',
+  'updateTextContent': 'set textContent'
 };
 
 function getTotalTime(measurements) {
@@ -17611,7 +17613,7 @@ module.exports = ReactUpdates;
 
 'use strict';
 
-module.exports = '0.14.3';
+module.exports = '0.14.5';
 },{}],140:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -21560,6 +21562,10 @@ exports.default = _alt2.default.createStore(UsersStore, 'UsersStore');
 },{"../actions/users-actions":2,"../dispatcher/alt":3}],190:[function(require,module,exports){
 'use strict';
 
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
@@ -21590,74 +21596,165 @@ var _usersStore2 = _interopRequireDefault(_usersStore);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var View = _react2.default.createClass({
-  displayName: 'View',
-  isLoading: function isLoading() {
-    return this.props.usersStore.loading || this.props.locationsStore.loading;
-  },
-  renderUsers: function renderUsers() {
-    return _react2.default.createElement(
-      'ul',
-      null,
-      this.props.usersStore.users.map(function (user) {
-        return _react2.default.createElement(
-          'li',
-          { key: user.id },
-          user.name
-        );
-      })
-    );
-  },
-  renderLocations: function renderLocations() {
-    return _react2.default.createElement(
-      'ul',
-      null,
-      this.props.locationsStore.locations.map(function (location) {
-        return _react2.default.createElement(
-          'li',
-          { key: location.id },
-          location.name
-        );
-      })
-    );
-  },
-  renderContent: function renderContent() {
-    return _react2.default.createElement(
-      'div',
-      null,
-      this.renderUsers(),
-      this.renderLocations()
-    );
-  },
-  renderLoading: function renderLoading() {
-    return _react2.default.createElement(
-      'span',
-      null,
-      'Loading'
-    );
-  },
-  render: function render() {
-    console.log(this.props);
-    return this.isLoading() ? this.renderLoading() : this.renderContent();
-  }
-});
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var App = _react2.default.createClass({
-  displayName: 'App',
-  componentDidMount: function componentDidMount() {
-    _locationsActions2.default.fetchLocations();
-    _usersActions2.default.fetchUsers();
-  },
-  render: function render() {
-    return _react2.default.createElement(
-      _altContainer2.default,
-      { stores: { locationsStore: _locationsStore2.default, usersStore: _usersStore2.default } },
-      _react2.default.createElement(View, null)
-    );
-  }
-});
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
-exports.default = App;
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var AppContainer = (function (_Component) {
+  _inherits(AppContainer, _Component);
+
+  function AppContainer() {
+    _classCallCheck(this, AppContainer);
+
+    return _possibleConstructorReturn(this, Object.getPrototypeOf(AppContainer).apply(this, arguments));
+  }
+
+  _createClass(AppContainer, [{
+    key: 'componentDidMount',
+    value: function componentDidMount() {
+      _locationsActions2.default.fetchLocations();
+      _usersActions2.default.fetchUsers();
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      return _react2.default.createElement(
+        _altContainer2.default,
+        { stores: { locationsStore: _locationsStore2.default, usersStore: _usersStore2.default } },
+        _react2.default.createElement(AppView, null)
+      );
+    }
+  }]);
+
+  return AppContainer;
+})(_react.Component);
+
+exports.default = AppContainer;
+
+var AppView = (function (_Component2) {
+  _inherits(AppView, _Component2);
+
+  function AppView() {
+    _classCallCheck(this, AppView);
+
+    return _possibleConstructorReturn(this, Object.getPrototypeOf(AppView).apply(this, arguments));
+  }
+
+  _createClass(AppView, [{
+    key: 'render',
+    value: function render() {
+      return _react2.default.createElement(
+        LoaderView,
+        { loaded: this.loaded },
+        _react2.default.createElement(ListView, { items: this.props.usersStore.users }),
+        _react2.default.createElement(ListView, { items: this.props.locationsStore.locations })
+      );
+    }
+  }, {
+    key: 'loaded',
+    get: function get() {
+      return !this.props.usersStore.loading && !this.props.locationsStore.loading;
+    }
+  }]);
+
+  return AppView;
+})(_react.Component);
+
+var LoaderView = (function (_Component3) {
+  _inherits(LoaderView, _Component3);
+
+  function LoaderView() {
+    _classCallCheck(this, LoaderView);
+
+    return _possibleConstructorReturn(this, Object.getPrototypeOf(LoaderView).apply(this, arguments));
+  }
+
+  _createClass(LoaderView, [{
+    key: 'render',
+    value: function render() {
+      return this.props.loaded ? _react2.default.createElement(
+        'div',
+        null,
+        this.props.children
+      ) : _react2.default.createElement(
+        'span',
+        null,
+        'Loading...'
+      );
+    }
+  }]);
+
+  return LoaderView;
+})(_react.Component);
+
+LoaderView.propTypes = {
+  loaded: _react.PropTypes.bool.isRequired
+};
+
+var ListView = (function (_Component4) {
+  _inherits(ListView, _Component4);
+
+  function ListView() {
+    _classCallCheck(this, ListView);
+
+    return _possibleConstructorReturn(this, Object.getPrototypeOf(ListView).apply(this, arguments));
+  }
+
+  _createClass(ListView, [{
+    key: 'render',
+    value: function render() {
+      var items = this.props.items.map(function (item) {
+        return _react2.default.createElement(ItemView, _extends({ key: item.id }, item));
+      });
+      return _react2.default.createElement(
+        'ul',
+        null,
+        items
+      );
+    }
+  }]);
+
+  return ListView;
+})(_react.Component);
+
+ListView.propTypes = {
+  items: _react.PropTypes.arrayOf(_react.PropTypes.shape({
+    id: _react.PropTypes.number,
+    name: _react.PropTypes.string
+  }))
+};
+ListView.defaultProps = {
+  items: []
+};
+
+var ItemView = (function (_Component5) {
+  _inherits(ItemView, _Component5);
+
+  function ItemView() {
+    _classCallCheck(this, ItemView);
+
+    return _possibleConstructorReturn(this, Object.getPrototypeOf(ItemView).apply(this, arguments));
+  }
+
+  _createClass(ItemView, [{
+    key: 'render',
+    value: function render() {
+      return _react2.default.createElement(
+        'li',
+        null,
+        this.props.name
+      );
+    }
+  }]);
+
+  return ItemView;
+})(_react.Component);
+
+ItemView.propTypes = {
+  name: _react2.default.PropTypes.string
+};
 
 },{"../actions/locations-actions":1,"../actions/users-actions":2,"../stores/locations-store":188,"../stores/users-store":189,"alt-container":4,"react":184}],191:[function(require,module,exports){
 'use strict';

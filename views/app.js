@@ -1,68 +1,84 @@
-import React, { Component } from 'react';
-import AltContainer from 'alt-container';
+import React, { Component, PropTypes } from 'react';
+import Container from 'alt-container';
 
 import locationsActions from '../actions/locations-actions';
 import userActions from '../actions/users-actions';
+
 import locationsStore from '../stores/locations-store';
 import usersStore from '../stores/users-store';
 
-const View = React.createClass({
-  isLoading() {
-    return this.props.usersStore.loading || this.props.locationsStore.loading;
-  },
-  renderUsers() {
-    return (
-      <ul>
-        {this.props.usersStore.users.map((user) => {
-          return (
-            <li key={user.id}>{user.name}</li>
-          );
-        })}
-      </ul>
-    );
-  },
-  renderLocations() {
-    return (
-      <ul>
-        {this.props.locationsStore.locations.map((location) => {
-          return (
-            <li key={location.id}>{location.name}</li>
-          );
-        })}
-      </ul>
-    );
-  },
-  renderContent() {
-    return (
-      <div>
-        {this.renderUsers()}
-        {this.renderLocations()}
-      </div>
-    )
-  },
-  renderLoading() {
-    return (
-      <span>Loading</span>
-    );
-  },
-  render() {
-    console.log(this.props);
-    return this.isLoading() ? this.renderLoading() : this.renderContent();
-  }
-});
-
-const App = React.createClass({
+export default class AppContainer extends Component {
   componentDidMount() {
     locationsActions.fetchLocations();
     userActions.fetchUsers();
-  },
+  }
+
   render() {
     return (
-      <AltContainer stores={{ locationsStore, usersStore }}>
-        <View />
-      </AltContainer>
+      <Container stores={{ locationsStore, usersStore }}>
+        <AppView />
+      </Container>
     );
   }
-});
+}
 
-export default App;
+class AppView extends Component {
+  get loaded() {
+    return !this.props.usersStore.loading && !this.props.locationsStore.loading;
+  }
+
+  render() {
+    return (
+      <LoaderView loaded={this.loaded}>
+        <ListView items={this.props.usersStore.users} />
+        <ListView items={this.props.locationsStore.locations} />
+      </LoaderView>
+    )
+  }
+}
+
+class LoaderView extends Component {
+  static propTypes = {
+    loaded: PropTypes.bool.isRequired
+  }
+
+  render() {
+    return this.props.loaded
+      ? <div>{this.props.children}</div>
+      : <span>Loading...</span>;
+  }
+}
+
+class ListView extends Component {
+  static propTypes = {
+    items: PropTypes.arrayOf(PropTypes.shape({
+      id: PropTypes.number,
+      name: PropTypes.string
+    }))
+  }
+
+  static defaultProps = {
+    items: []
+  }
+
+  render() {
+    let items = this.props.items.map(item => <ItemView key={item.id} {...item} />);
+    return (
+      <ul>
+        {items}
+      </ul>
+    );
+  }
+}
+
+class ItemView extends Component {
+  static propTypes = {
+    name: React.PropTypes.string
+  }
+
+  render() {
+    return (
+      <li>{this.props.name}</li>
+    );
+  }
+}
